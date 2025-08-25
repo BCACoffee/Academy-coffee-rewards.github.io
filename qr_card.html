@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>QR Card</title>
+  <meta charset="UTF-8" />
+  <style>
+    @page { size: 3.5in 2in; margin: 0; }
+    html, body { margin:0; padding:0; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; }
+    .card { width:3.5in; height:2in; position:relative; }
+    .header { background:#9b111e; color:white; height:.45in; display:flex; align-items:center; gap:.12in; padding:0 .18in; }
+    .logo { width:.30in; height:.30in; border-radius:6px; background:white; display:inline-block; background-image:url('icons/apple-touch-icon.png'); background-size:cover; border:1px solid #e5e5ee; }
+    .title { font-weight:800; font-size:12px; letter-spacing:.2px; }
+    .body { display:flex; justify-content:space-between; align-items:center; padding:.12in .18in; height:1.25in; }
+    .name { font-size:14px; font-weight:700; color:#111; }
+    .tagline { color:#f0b429; font-weight:700; font-size:11px; margin-top:4px; }
+    .qr img { width:1.1in; height:1.1in; }
+    .footer { position:absolute; bottom:0; left:0; right:0; height:.3in; background:#f7f7fb; border-top:1px dashed #ddd; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <span class="logo"></span>
+      <span class="title">Christian Academy Coffee Rewards</span>
+    </div>
+    <div class="body">
+      <div>
+        <div class="name" id="nm">Student Name</div>
+        <div class="tagline">Buy 10, Get 1 Free</div>
+      </div>
+      <div class="qr" id="qr"><img alt="QR"></div>
+    </div>
+    <div class="footer"></div>
+  </div>
+
+  <script>
+    function qs(k){ return new URLSearchParams(location.search).get(k); }
+    const id = qs('id') || 'sample1234';
+    const name = qs('name') || 'Sample Student';
+    document.getElementById('nm').textContent = name;
+    // Uses a free QR service. For fully offline, swap to a local QR lib later.
+    const url = new URL(location.origin + location.pathname.replace('qr_card.html','') + 'customer.html');
+    url.searchParams.set('id', id);
+    document.querySelector('#qr img').src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url.toString());
+    window.onload = () => setTimeout(()=>window.print(), 400);
+  </script>
+</body>
+</html>
