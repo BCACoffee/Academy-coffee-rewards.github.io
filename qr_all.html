@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>QR Cards — All</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    @media print { .pagebreak { page-break-after: always; } }
+    body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; margin:0; padding:12px; }
+    .grid{ display:grid; grid-template-columns: repeat(2, 3.6in); gap:.3in; justify-content:center; }
+    iframe{ width:3.5in; height:2in; border:0; }
+    .hint{ margin:12px 0; color:#666; }
+  </style>
+</head>
+<body>
+  <div class="hint">Grid layout — prints multiple cards per sheet. (Enable “Background graphics” in print dialog.)</div>
+  <div id="grid" class="grid"></div>
+
+  <script>
+  // 🔧 Demo Firebase config (replace with your own)
+  const firebaseConfig = {
+    apiKey: "AIzaSyDemo-1234567890",
+    authDomain: "demo-coffee.firebaseapp.com",
+    projectId: "demo-coffee",
+    storageBucket: "demo-coffee.appspot.com",
+    messagingSenderId: "1234567890",
+    appId: "1:1234567890:web:abcdef123456"
+  };
+
+  let db=null;
+  function cardURL(id,name){ const u = new URL('qr_card.html', location.href); u.searchParams.set('id', id); u.searchParams.set('name', name); return u.toString(); }
+  window.addEventListener('load', async () => {
+    try { const app=firebase.initializeApp(firebaseConfig); db=firebase.firestore(app);
+      const snap = await db.collection('customers').orderBy('name').get();
+      const grid = document.getElementById('grid');
+      if (snap.empty) {
+        const ifr = document.createElement('iframe'); ifr.src = cardURL('sample1234','Sample Student'); grid.appendChild(ifr);
+        return;
+      }
+      snap.forEach(doc=>{ const c=doc.data(); const ifr=document.createElement('iframe'); ifr.src=cardURL(doc.id, c.name); grid.appendChild(ifr); });
+      setTimeout(()=>window.print(), 800);
+    } catch(e) {
+      const grid = document.getElementById('grid');
+      const ifr = document.createElement('iframe'); ifr.src = cardURL('sample1234','Sample Student'); grid.appendChild(ifr);
+    }
+  });
+  </script>
+</body>
+</html>
