@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Christian Academy Coffee Rewards — Staff</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#9b111e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:#f7f7fb; color:#111; }
+    header{ position:sticky; top:0; background:white; padding:10px clamp(12px,3vw,24px); border-bottom:1px solid #e8e8ef; display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; z-index:5; }
+    .logo{ width:44px; height:44px; border-radius:8px; border:1px solid #e5e5ee; object-fit:cover; }
+    h1{ margin:0; font-size:clamp(18px,2.6vw,28px);}
+    .brand-strip{ background:#9b111e; color:white; border-radius:10px; padding:8px 12px; display:inline-block;}
+    .subtitle{ color:#5a5a6b; font-size:13px;}
+    .tag{ font-size:12px; padding:4px 8px; border:1px solid #ddd; border-radius:999px; background:#fafafa; }
+    main{ padding:16px clamp(12px,3vw,24px) 80px; max-width:1200px; margin:0 auto; }
+    .card{ background:white; border:1px solid #e8e8ef; border-radius:14px; padding:16px; box-shadow:0 4px 10px rgba(0,0,0,.04);}
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .grow{ flex:1 1 240px; }
+    input[type="text"],input[type="number"]{ width:100%; border:1px solid #d9d9e6; background:#fff; border-radius:12px; padding:10px 12px; font-size:15px; }
+    .btn{ appearance:none; border:1px solid #d1d1de; background:#fff; padding:9px 12px; border-radius:12px; font-size:14px; cursor:pointer; }
+    .btn.primary{ background:#9b111e; color:white; border-color:#9b111e; }
+    .btn.accent{ background:#f0b429; border-color:#f0b429; color:#3a2a00; }
+    .btn.danger{ background:#fff0f0; border-color:#ffd7d7; color:#c70000; }
+    .btn.small{ padding:6px 10px; font-size:13px; border-radius:10px; }
+    .list{ margin-top:16px; display:grid; grid-template-columns:1fr; gap:10px; }
+    @media(min-width:680px){ .list{ grid-template-columns:1fr 1fr; } }
+    @media(min-width:1000px){ .list{ grid-template-columns:1fr 1fr 1fr; } }
+    .customer{ display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; border:1px solid #ececf4; padding:12px; border-radius:12px; background:#fcfcff; }
+    .customer.free{ border-color:#8bd48b; background:#f3fff3; }
+    .name{ font-weight:700; }
+    .meta{ font-size:13px; color:#606080; }
+    .pill{ font-size:12px; padding:3px 8px; border-radius:999px; background:#eef2ff; color:#3340aa; border:1px solid #dfe6ff; display:inline-block; margin-left:6px; }
+    footer{ position:sticky; bottom:0; background:linear-gradient(to top, rgba(247,247,251,1), rgba(247,247,251,.9)); border-top:1px solid #ececf4; padding:10px clamp(12px,3vw,24px); display:flex; gap:10px; align-items:center; justify-content:space-between; }
+    .hint{ font-size:12px; color:#666; }
+  </style>
+</head>
+<body>
+  <header>
+    <!-- Replace src with your logo path if you upload one to /icons/logo.png -->
+    <img class="logo" src="icons/apple-touch-icon.png" alt="Logo">
+    <div>
+      <h1 class="brand-strip">Christian Academy Coffee Rewards — Staff</h1>
+      <div class="subtitle">Buy 10, Get 1 Free • PIN-protected Staff Mode</div>
+    </div>
+    <div class="row">
+      <div class="tag" id="totalStats">0 customers • 0 free ready</div>
+      <button class="btn small accent" id="lockBtn" onclick="toggleLock()">Unlock</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" id="adminCard" style="display:none;">
+      <div class="row">
+        <input id="addName" class="grow" type="text" placeholder="Add customer (name or student ID)" />
+        <button class="btn primary" onclick="addCustomer()">Add</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input id="search" class="grow" type="text" placeholder="Search…" oninput="render()" />
+        <button class="btn" onclick="exportCSV()">Export CSV</button>
+        <button class="btn" onclick="printAll()">Print All Cards</button>
+        <label class="btn" for="targetInput">Target</label>
+        <input id="targetInput" class="btn small" style="width:64px;text-align:center" type="number" min="1" value="10" />
+        <button class="btn" onclick="changePin()">Change PIN</button>
+      </div>
+    </section>
+
+    <section class="card" id="publicCard">
+      <div class="row">
+        <input id="searchPublic" class="grow" type="text" placeholder="Search…" oninput="render()" />
+        <span class="hint">View-only mode. Unlock to make changes.</span>
+      </div>
+    </section>
+
+    <div id="list" class="list"></div>
+  </main>
+
+  <footer>
+    <div class="hint">Install to Home Screen for app-like use. Requires internet to sync with Firestore.</div>
+    <div class="row"><span class="hint" id="connHint">Connecting…</span></div>
+  </footer>
+
+  <script>
+  // 🔧 Demo Firebase config (replace with your own)
+  const firebaseConfig = {
+    apiKey: "AIzaSyDemo-1234567890",
+    authDomain: "demo-coffee.firebaseapp.com",
+    projectId: "demo-coffee",
+    storageBucket: "demo-coffee.appspot.com",
+    messagingSenderId: "1234567890",
+    appId: "1:1234567890:web:abcdef123456"
+  };
+
+  let db = null;
+  let isStaff = false;
+  let state = { target: 10, pin: null };
+  const targetInput = document.getElementById('targetInput');
+
+  // Demo fallback if Firebase fails
+  let demoMode = false;
+  const DEMO_ID = 'sample1234';
+  const DEMO_CUSTOMERS = [{ id: DEMO_ID, name: 'Sample Student', count: 7, freeAvailable: 0, totalPurchases: 7, updatedAt: Date.now() }];
+
+  function saveLocal() { localStorage.setItem('academy_staff_state', JSON.stringify(state)); }
+  function loadLocal() { try { const raw = localStorage.getItem('academy_staff_state'); if (raw) state = JSON.parse(raw); } catch(e){} targetInput.value = state.target || 10; }
+  loadLocal();
+
+  window.addEventListener('load', async () => {
+    try {
+      const app = firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore(app);
+      document.getElementById('connHint').textContent = 'Connected';
+      subscribeCustomers();
+    } catch (e) {
+      demoMode = true;
+      document.getElementById('connHint').textContent = 'Demo mode (no Firebase)';
+      render(DEMO_CUSTOMERS);
+    }
+  });
+
+  function toggleLock() {
+    if (isStaff) { isStaff = false; document.getElementById('lockBtn').textContent='Unlock'; showAdmin(false); return; }
+    if (!state.pin) {
+      const p1 = prompt('Set Staff PIN:'); if (!p1) return;
+      const p2 = prompt('Confirm PIN:'); if (p1 !== p2) return alert('PINs do not match');
+      state.pin = p1; saveLocal();
+    }
+    const attempt = prompt('Enter Staff PIN:');
+    if (attempt === state.pin) { isStaff = true; document.getElementById('lockBtn').textContent='Lock'; showAdmin(true); }
+    else alert('Incorrect PIN');
+  }
+  function changePin() {
+    const cur = prompt('Enter current PIN:'); if (cur !== state.pin) return alert('Incorrect');
+    const p1 = prompt('New PIN:'); if (!p1) return;
+    const p2 = prompt('Confirm New PIN:'); if (p1 !== p2) return alert('Mismatch');
+    state.pin = p1; saveLocal(); alert('PIN updated');
+  }
+  function showAdmin(show) {
+    document.getElementById('adminCard').style.display = show ? 'block' : 'none';
+    document.getElementById('publicCard').style.display = show ? 'none' : 'block';
+  }
+
+  function subscribeCustomers() {
+    db.collection('customers').orderBy('name').onSnapshot(snap => {
+      const arr = [];
+      snap.forEach(doc => arr.push(Object.assign({id: doc.id}, doc.data())));
+      render(arr);
+    });
+  }
+  async function addCustomer() {
+    const nameEl = document.getElementById('addName');
+    const name = (nameEl.value || '').trim();
+    if (!name) return;
+    await db.collection('customers').add({ name, count:0, freeAvailable:0, totalPurchases:0, updatedAt: Date.now() });
+    nameEl.value='';
+  }
+  async function increment(id) {
+    const ref = db.collection('customers').doc(id);
+    const doc = await ref.get(); if (!doc.exists) return;
+    const c = doc.data(); c.count=(c.count||0)+1; c.totalPurchases=(c.totalPurchases||0)+1; c.updatedAt=Date.now();
+    while (c.count >= state.target) { c.count -= state.target; c.freeAvailable=(c.freeAvailable||0)+1; }
+    await ref.update(c);
+  }
+  async function decrement(id) {
+    const ref = db.collection('customers').doc(id);
+    const doc = await ref.get(); if (!doc.exists) return;
+    const c = doc.data(); if (c.count>0) c.count--; if (c.totalPurchases>0) c.totalPurchases--; c.updatedAt=Date.now();
+    await ref.update(c);
+  }
+  async function redeemFree(id) {
+    const ref = db.collection('customers').doc(id);
+    const doc = await ref.get(); if (!doc.exists) return;
+    const c = doc.data();
+    if ((c.freeAvailable||0)>0) c.freeAvailable--;
+    else if (c.count >= state.target) c.count -= state.target;
+    else return alert('No free drink yet');
+    c.updatedAt=Date.now(); await ref.update(c);
+  }
+  async function deleteOne(id) { if (!confirm('Delete this customer?')) return; await db.collection('customers').doc(id).delete(); }
+
+  function matchesFilter(cust, q) { const s=(q||'').trim().toLowerCase(); if(!s)return true; return cust.name.toLowerCase().includes(s) || (cust.id||'').toLowerCase().includes(s); }
+  function sortCustomers(a,b) { if ((b.freeAvailable||0)!==(a.freeAvailable||0)) return (b.freeAvailable||0)-(a.freeAvailable||0); if (b.count!==a.count) return b.count-a.count; return a.name.localeCompare(b.name); }
+
+  function render(arr) {
+    const list = document.getElementById('list');
+    const q = (isStaff ? document.getElementById('search').value : document.getElementById('searchPublic').value) || '';
+    const filtered = (arr||[]).filter(c=>matchesFilter(c,q)).sort(sortCustomers);
+    list.innerHTML='';
+    const ready = filtered.reduce((acc,c)=>acc + (c.freeAvailable||0) + Math.floor((c.count||0)/state.target),0);
+    document.getElementById('totalStats').textContent = `${filtered.length} customers • ${ready} free ready`;
+
+    filtered.forEach(c => {
+      const freeDue = (c.count||0) >= state.target;
+      const hasFree = (c.freeAvailable||0) > 0;
+      const div = document.createElement('div'); div.className='customer'+(freeDue||hasFree?' free':'');
+
+      const left = document.createElement('div');
+      const name = document.createElement('div'); name.className='name'; name.textContent=c.name; left.appendChild(name);
+      const meta = document.createElement('div'); meta.className='meta';
+      meta.innerHTML = `ID: <code>${c.id}</code> • Punches <span class="pill">${c.count||0}/${state.target}</span> • Total <span class="pill">${c.totalPurchases||0}</span> ${hasFree ? '<span class="pill">Free ready: '+c.freeAvailable+'</span>':''}`;
+      left.appendChild(meta);
+
+      const right = document.createElement('div'); right.className='row';
+      if (isStaff && !demoMode) {
+        right.appendChild(btn('+1','primary',()=>increment(c.id)));
+        if (freeDue || hasFree) right.appendChild(btn('Redeem','accent',()=>redeemFree(c.id)));
+        right.appendChild(btn('−1','',()=>decrement(c.id)));
+        right.appendChild(btn('Print Card','',()=>printCard(c.id, c.name)));
+        right.appendChild(btn('Delete','danger',()=>deleteOne(c.id)));
+      } else {
+        right.appendChild(spanHint('Locked'));
+      }
+
+      div.appendChild(left); div.appendChild(right);
+      list.appendChild(div);
+    });
+  }
+
+  function btn(label, cls, on) { const b=document.createElement('button'); b.className='btn small '+(cls||''); b.textContent=label; b.onclick=on; return b; }
+  function spanHint(t) { const s=document.createElement('span'); s.className='hint'; s.textContent=t; return s; }
+
+  function printCard(id, name) {
+    const url = new URL(window.location.origin + window.location.pathname.replace('index.html','') + 'qr_card.html');
+    url.searchParams.set('id', id); url.searchParams.set('name', name);
+    window.open(url.toString(), '_blank');
+  }
+  function printAll() {
+    const url = new URL(window.location.origin + window.location.pathname.replace('index.html','') + 'qr_all.html');
+    window.open(url.toString(), '_blank');
+  }
+
+  async function exportCSV() {
+    if (!db) return alert('Connect Firebase first.');
+    const snap = await db.collection('customers').get();
+    const lines = ['id,name,count,freeAvailable,totalPurchases,updatedAt'];
+    snap.forEach(doc => { const c=doc.data(); lines.push([doc.id, JSON.stringify(c.name), c.count||0, c.freeAvailable||0, c.totalPurchases||0, c.updatedAt||0].join(',')); });
+    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='customers.csv'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  }
+
+  targetInput.addEventListener('change', () => { state.target = Math.max(1, parseInt(targetInput.value||'10',10)); saveLocal(); });
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  </script>
+</body>
+</html>
