@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>My Coffee Rewards</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#9b111e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; margin:0; background:#ffffff; color:#111; }
+    header{ padding:16px; text-align:center; border-bottom:4px solid #9b111e; }
+    .logo{ width:56px; height:56px; border-radius:10px; border:1px solid #eee; object-fit:cover; }
+    h1{ margin:8px 0 0; font-size:22px; }
+    .sub{ color:#666; font-size:13px; }
+    main{ padding:20px; max-width:520px; margin:auto; }
+    .card{ border:1px solid #eee; border-radius:14px; padding:18px; background:#fafafa; }
+    .big{ font-size:36px; font-weight:800; }
+    .meter{ height:14px; background:#eee; border-radius:999px; overflow:hidden; margin:8px 0 4px; }
+    .bar{ height:100%; background:#9b111e; width:0%; }
+    .pill{ display:inline-block; padding:4px 10px; border-radius:999px; background:#f0b429; color:#3a2a00; font-weight:600; }
+    footer{ text-align:center; padding:20px; color:#777; font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <img class="logo" src="icons/apple-touch-icon.png" alt="Logo">
+    <h1>Christian Academy Coffee Rewards</h1>
+    <div class="sub">Buy 10, Get 1 Free</div>
+  </header>
+  <main>
+    <div id="content" class="card">Loading…</div>
+  </main>
+  <footer>Questions? Ask the coffee shop staff.</footer>
+
+  <script>
+  // 🔧 Demo Firebase config (replace with your own)
+  const firebaseConfig = {
+    apiKey: "AIzaSyDemo-1234567890",
+    authDomain: "demo-coffee.firebaseapp.com",
+    projectId: "demo-coffee",
+    storageBucket: "demo-coffee.appspot.com",
+    messagingSenderId: "1234567890",
+    appId: "1:1234567890:web:abcdef123456"
+  };
+
+  let db=null; let TARGET=10;
+  function qs(k){ return new URLSearchParams(location.search).get(k); }
+  window.addEventListener('load', async () => {
+    try {
+      const app = firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore(app);
+      const id = qs('id'); if (!id) return renderErr('Missing id');
+      const doc = await db.collection('customers').doc(id).get();
+      if (!doc.exists) return renderErr('Customer not found.');
+      const c = doc.data();
+      render(c.name, c.count||0, c.freeAvailable||0, c.totalPurchases||0, c.updatedAt||Date.now(), id);
+    } catch(e) { renderErr('Unable to load.'); }
+  });
+
+  function render(name, count, freeAvailable, total, updatedAt, id) {
+    const pct = Math.min(100, Math.round((count/TARGET)*100));
+    const d = new Date(updatedAt); const ds = d.toLocaleString();
+    const el = document.getElementById('content');
+    el.innerHTML = `
+      <div class="big">${name}</div>
+      <div class="meter"><div class="bar" style="width:${pct}%"></div></div>
+      <div>Progress: <strong>${count} / ${TARGET}</strong></div>
+      <div style="margin-top:6px">Free drinks available: <span class="pill">${freeAvailable}</span></div>
+      <div style="margin-top:8px; color:#666">Last updated: ${ds}</div>
+    `;
+  }
+  function renderErr(msg){ document.getElementById('content').textContent = msg; }
+  </script>
+</body>
+</html>
